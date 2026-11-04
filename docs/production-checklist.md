@@ -7,6 +7,17 @@
 - مستخدم قاعدة بيانات مخصص للنظام (مش `root`) بصلاحيات على قاعدة `arrears` بس.
 - على HTTPS: `SESSION_SECURE_COOKIE=true`.
 
+### إضافات PHP المطلوبة
+- `zip` (ext-zip): لازمة لقراءة/كتابة ملفات xlsx.
+- `xmlreader` و `dom` (ext-xmlreader / ext-dom): لازمة لقراءة محتوى xlsx.
+- `mbstring` و `fileinfo`: لازمة للتعامل مع النصوص العربية ورفع الملفات.
+
+للتأكد على السيرفر:
+```bash
+php -m
+```
+لازم تلاقي `zip` و `xmlreader` و `dom` في القايمة. لو ناقصة: ثبّت `php-zip` و `php-xml` (أو فعّل `extension=zip` و `extension=xmlreader` في `php.ini`) وأعد تشغيل PHP/السيرفر. ومجلد `storage/app/private` لازم يكون قابل للقراءة والكتابة لمستخدم PHP.
+
 ## 2) بعد كل تحديث للكود
 ```bash
 composer install --no-dev --optimize-autoloader
