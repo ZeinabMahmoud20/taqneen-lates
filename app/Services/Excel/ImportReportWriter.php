@@ -23,6 +23,8 @@ class ImportReportWriter
         $options->setColumnWidth(16, 2);
         $options->setColumnWidth(100, 3);
 
+        OpenSpoutTempFolder::configure($options, $path);
+
         $writer = new Writer($options);
         $writer->openToFile($path);
 

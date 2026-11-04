@@ -8,6 +8,7 @@ use App\Services\ArrearsImporter;
 use App\Services\Excel\ArrearsTemplateWriter;
 use App\Services\Excel\ImportFormatException;
 use App\Services\Excel\ImportReportWriter;
+use App\Services\Excel\OpenSpoutTempFolder;
 use App\Services\ImportResult;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -38,7 +39,9 @@ class ListContracts extends ListRecords
             ->color('gray')
             ->visible(fn (): bool => auth()->user()?->can('create', Contract::class) ?? false)
             ->action(function () {
-                $path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'arrears-template-' . uniqid() . '.xlsx';
+                // مش بنستخدم sys_get_temp_dir لأن C:\Windows\TEMP غالباً مش قابل
+                // للكتابة لمستخدم IIS. المجلد اللي بنستخدمه جوه storage ومضمون.
+                $path = OpenSpoutTempFolder::file('arrears-template-');
                 (new ArrearsTemplateWriter())->write($path);
 
                 return response()->download($path, 'arrears-import-template.xlsx')->deleteFileAfterSend();
@@ -107,8 +110,19 @@ class ListContracts extends ListRecords
                 }
 
                 // تقرير بالأخطاء والتنبيهات بيتحمّل تلقائياً
-                $report = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'import-report-' . uniqid() . '.xlsx';
-                (new ImportReportWriter())->write($result->errors, $report, $result->warnings);
+                try {
+                    $report = OpenSpoutTempFolder::file('import-report-');
+                    (new ImportReportWriter())->write($result->errors, $report, $result->warnings);
+                } catch (ImportFormatException $e) {
+                    Notification::make()
+                        ->danger()
+                        ->title('تم الاستيراد لكن تعذّر إنشاء تقرير الأخطاء')
+                        ->body(e($e->getMessage()))
+                        ->persistent()
+                        ->send();
+
+                    return null;
+                }
 
                 return response()
                     ->download($report, 'import-report-' . now()->format('Y-m-d_H-i') . '.xlsx')

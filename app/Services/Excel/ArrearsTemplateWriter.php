@@ -65,6 +65,8 @@ class ArrearsTemplateWriter
         $options->setColumnWidth(22, 25, 26, 27, 28, 29);
         $options->setColumnWidth(12, 30);
 
+        OpenSpoutTempFolder::configure($options, $path);
+
         $writer = new Writer($options);
         $writer->openToFile($path);
 

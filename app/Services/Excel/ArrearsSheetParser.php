@@ -76,7 +76,7 @@ class ArrearsSheetParser
         $this->assertFileCanBeOpened($path);
 
         $options = new Options();
-        $this->useWritableTempFolder($options, $path);
+        OpenSpoutTempFolder::configure($options, $path);
 
         $reader = new Reader($options);
 
@@ -97,53 +97,6 @@ class ArrearsSheetParser
         }
 
         throw new ImportFormatException('الملف فاضي.');
-    }
-
-    /**
-     * OpenSpout بيرمي ملفات مؤقتة (shared strings) في temp النظام. على سيرفرات
-     * كتير C:\Windows\TEMP أو /tmp مش قابل للكتابة لمستخدم PHP، فبنختار أول
-     * مجلد قابل للكتابة فعليًا (بنجرب نكتب فيه ملف حقيقي مش بس is_writable).
-     *
-     * @throws ImportFormatException
-     */
-    private function useWritableTempFolder(Options $options, string $filePath): void
-    {
-        $candidates = [
-            dirname($filePath) . DIRECTORY_SEPARATOR . 'openspout-temp',   // نفس مكان الملف المرفوع
-            storage_path('app/private/openspout-temp'),
-            storage_path('app/openspout-temp'),
-            storage_path('framework/cache'),
-            sys_get_temp_dir(),
-        ];
-
-        foreach ($candidates as $folder) {
-            if ($folder === '') {
-                continue;
-            }
-
-            if (! is_dir($folder) && ! @mkdir($folder, 0775, true) && ! is_dir($folder)) {
-                continue;
-            }
-
-            // is_writable ساعات بتدّي نتيجة غلط على ويندوز، فبنجرب كتابة فعلية.
-            $probe = $folder . DIRECTORY_SEPARATOR . 'write-test-' . uniqid('', true);
-            if (@file_put_contents($probe, 'ok') === false) {
-                continue;
-            }
-            @unlink($probe);
-
-            try {
-                $options->setTempFolder($folder);
-
-                return;
-            } catch (\Throwable $e) {
-                report($e);
-            }
-        }
-
-        throw new ImportFormatException(
-            'مجلد الملفات المؤقتة على السيرفر مش قابل للكتابة. راجع صلاحيات storage/app/private و storage/app للمستخدم اللي بيشغّل PHP.'
-        );
     }
 
     /**

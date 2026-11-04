@@ -26,6 +26,8 @@ class OverdueExporter
         $options->setColumnWidth(12, 11);
         $options->setColumnWidth(16, 12, 13);
 
+        OpenSpoutTempFolder::configure($options, $target);
+
         $writer = new Writer($options);
         $writer->openToFile($target);
 
