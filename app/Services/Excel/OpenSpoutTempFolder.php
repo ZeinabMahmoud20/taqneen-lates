@@ -83,7 +83,8 @@ final class OpenSpoutTempFolder
     {
         $candidates = [];
 
-        if ($nearPath !== null && $nearPath !== '') {
+        // المسارات من نوع php://output ملهاش مجلد حقيقي، فنتجاهلها.
+        if ($nearPath !== null && $nearPath !== '' && ! str_contains($nearPath, '://')) {
             $nearDir = dirname($nearPath);
 
             // لو الملف نفسه جوه مجلد الـ temp بتاعنا، نستخدمه من غير ما نعمل مجلد متداخل.
