@@ -2,6 +2,11 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Widgets\OverdueAgingChart;
+use App\Filament\Widgets\OverdueByCenterTable;
+use App\Filament\Widgets\OverduePlanChart;
+use App\Filament\Widgets\OverdueStatsOverview;
+use App\Filament\Widgets\TopOverdueCitizens;
 use App\Models\Center;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -17,6 +22,17 @@ use Filament\Schemas\Schema;
 class Dashboard extends BaseDashboard
 {
     use HasFiltersForm;
+
+    public function getWidgets(): array
+    {
+        return [
+            OverdueStatsOverview::class,
+            OverdueAgingChart::class,
+            OverduePlanChart::class,
+            OverdueByCenterTable::class,
+            TopOverdueCitizens::class,
+        ];
+    }
 
     public function filtersForm(Schema $schema): Schema
     {
