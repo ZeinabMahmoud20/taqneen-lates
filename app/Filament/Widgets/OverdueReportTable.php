@@ -21,7 +21,23 @@ class OverdueReportTable extends TableWidget
 
     public function table(Table $table): Table
     {
-        return OverdueInstallmentsTable::configure($table)
+        $table = OverdueInstallmentsTable::configure($table);
+
+        // شاشة التقارير مش محتاجة بيانات التواصل، وإزالتها بتمنع الـ horizontal scroll.
+        $columns = array_diff_key($table->getColumns(), array_flip([
+            'citizen_phones',
+            'representative_name',
+            'representative_phones',
+        ]));
+
+        // اللف بيخلّي الجدول يملا عرض الشاشة بدل ما يعمل horizontal scroll.
+        $columns['citizen_name']->wrap();
+        $columns['due_date']->wrapHeader();
+        $columns['days_overdue']->wrapHeader();
+
+        $table->columns($columns);
+
+        return $table
             ->query(fn (): Builder => $this->getRecordsQuery())
             ->filters([])
             ->paginated(false);
@@ -69,12 +85,23 @@ class OverdueReportTable extends TableWidget
             });
 
             clone.querySelectorAll('.fi-ta-summary-row').forEach(row => row.remove());
+
             const table = clone.querySelector('.fi-ta-table');
             if (table) {
+                // Chrome does not repeat table headers that contain buttons on later printed pages.
+                // Replace the sorting buttons with plain spans so the header is printed on every page.
+                table.querySelectorAll('thead th button').forEach(button => {
+                    const label = document.createElement('span');
+                    label.textContent = button.textContent.trim();
+                    button.replaceWith(label);
+                });
+
+                const visibleColumnsCount = Math.max(table.querySelector('thead tr')?.children.length ?? 9, 2);
+
                 const body = table.querySelector('tbody:last-of-type') ?? table.createTBody();
                 const summary = document.createElement('tr');
                 summary.className = 'print-summary-row';
-                summary.innerHTML = '<th colspan="10">الإجمالي</th><td colspan="2">' + Number('__TOTAL_REMAINING__').toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</td>';
+                summary.innerHTML = '<th colspan="' + (visibleColumnsCount - 1) + '">الإجمالي</th><td colspan="1">' + Number('__TOTAL_REMAINING__').toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</td>';
                 body.append(summary);
             }
 
@@ -85,7 +112,7 @@ class OverdueReportTable extends TableWidget
             style.media = 'print';
             style.textContent = `
                 body > *:not(#report-print-root) { display: none !important; }
-                #report-print-root { display: block !important; width: 100%; direction: rtl; background: #fff !important; color: #000 !important; }
+                #report-print-root { display: block !important; width: 100%; direction: rtl; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 #report-print-root, #report-print-root * { box-sizing: border-box; color: #000 !important; }
                 #report-print-root .fi-ta-header-ctn .fi-btn,
                 #report-print-root .fi-ta-header-toolbar,
@@ -98,20 +125,20 @@ class OverdueReportTable extends TableWidget
                 #report-print-root .fi-ta-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
                 #report-print-root .fi-ta-table th,
                 #report-print-root .fi-ta-table td { border: 1px solid #777 !important; background: #fff !important; color: #000 !important; text-align: right !important; padding: 4px !important; font-size: 8pt !important; line-height: 1.25 !important; white-space: normal !important; overflow-wrap: anywhere !important; }
-                #report-print-root .fi-ta-table th:nth-child(2), #report-print-root .fi-ta-table td:nth-child(2) { width: 27.27% !important; }
                 #report-print-root .fi-ta-table th:nth-child(1), #report-print-root .fi-ta-table td:nth-child(1),
-                #report-print-root .fi-ta-table th:nth-child(3), #report-print-root .fi-ta-table td:nth-child(3),
-                #report-print-root .fi-ta-table th:nth-child(7), #report-print-root .fi-ta-table td:nth-child(7),
+                #report-print-root .fi-ta-table th:nth-child(5), #report-print-root .fi-ta-table td:nth-child(5),
+                #report-print-root .fi-ta-table th:nth-child(7), #report-print-root .fi-ta-table td:nth-child(7) { width: 8% !important; }
+                #report-print-root .fi-ta-table th:nth-child(2), #report-print-root .fi-ta-table td:nth-child(2) { width: 26% !important; }
+                #report-print-root .fi-ta-table th:nth-child(3), #report-print-root .fi-ta-table td:nth-child(3) { width: 9% !important; }
+                #report-print-root .fi-ta-table th:nth-child(4), #report-print-root .fi-ta-table td:nth-child(4),
                 #report-print-root .fi-ta-table th:nth-child(8), #report-print-root .fi-ta-table td:nth-child(8),
-                #report-print-root .fi-ta-table th:nth-child(9), #report-print-root .fi-ta-table td:nth-child(9),
-                #report-print-root .fi-ta-table th:nth-child(10), #report-print-root .fi-ta-table td:nth-child(10) { width: 8.62% !important; }
-                #report-print-root .fi-ta-table th:nth-child(11), #report-print-root .fi-ta-table td:nth-child(11),
-                #report-print-root .fi-ta-table th:nth-child(12), #report-print-root .fi-ta-table td:nth-child(12) { width: 10.5% !important; }
-                #report-print-root .fi-ta-table th:nth-child(4), #report-print-root .fi-ta-table th:nth-child(5), #report-print-root .fi-ta-table th:nth-child(6),
-                #report-print-root .fi-ta-table td:nth-child(4), #report-print-root .fi-ta-table td:nth-child(5), #report-print-root .fi-ta-table td:nth-child(6) { display: none !important; }
-                #report-print-root .print-summary-row { font-weight: 700 !important; }
-                #report-print-root .print-summary-row th { text-align: right !important; font-weight: 700 !important; }
-                #report-print-root .print-summary-row td:last-child { width: 21% !important; text-align: right !important; font-weight: 700 !important; }
+                #report-print-root .fi-ta-table th:nth-child(9), #report-print-root .fi-ta-table td:nth-child(9) { width: 10% !important; }
+                #report-print-root .fi-ta-table th:nth-child(6), #report-print-root .fi-ta-table td:nth-child(6) { width: 11% !important; }
+                #report-print-root .fi-ta-table thead th { background: #f3f4f6 !important; font-weight: 700 !important; }
+                #report-print-root .print-summary-row th,
+                #report-print-root .print-summary-row td { background: #f3f4f6 !important; border-top: 2px solid #000 !important; font-weight: 700 !important; padding-top: 6px !important; padding-bottom: 6px !important; }
+                #report-print-root .print-summary-row th { text-align: right !important; }
+                #report-print-root .print-summary-row td:last-child { text-align: right !important; white-space: nowrap !important; }
                 @page { size: landscape; margin: 10mm; }
             `;
             document.head.append(style);
