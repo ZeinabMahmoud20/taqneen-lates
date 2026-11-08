@@ -1,0 +1,155 @@
+/* =====================================================================
+   ثيم نظام المتأخرات - مبني على KFS Royal Egyptian (وضع فاتح فقط)
+   بيتحمّل بعد CSS بتاع Filament، وبما إن Filament بيستخدم cascade layers
+   فالقواعد هنا بتكسب من غير !important.
+   ===================================================================== */
+
+:root {
+  --ivory: #FAF8F2;
+  --papyrus: #F4F0E6;
+  --sand: #E9E2D2;
+  --white-soft: #FEFDFC;
+  --egypt-green: #123F35;
+  --egypt-green-deep: #0A2924;
+  --egypt-gold: #B8954F;
+  --egypt-gold-soft: rgba(184,149,79,.18);
+  --egypt-gold-line: rgba(184,149,79,.28);
+  --text: #303632;
+  --text-soft: #626963;
+  --muted: #858A84;
+  --charcoal: #202522;
+  --line: rgba(18,63,53,.12);
+  --r: 6px;
+  --r-lg: 10px;
+  --shadow: 0 10px 35px rgba(18,63,53,.07);
+  --ff-ar: 'Tajawal', 'IBM Plex Sans Arabic', sans-serif;
+  --ff-body: 'IBM Plex Sans Arabic', 'Tajawal', sans-serif;
+}
+
+/* ---------- الهيدر والقايمة الجانبية ---------- */
+.fi-topbar {
+  background-color: var(--white-soft);
+  border-bottom: 1px solid var(--egypt-gold-line);   /* الخط الذهبي تحت الهيدر */
+}
+
+.fi-sidebar {
+  background-color: var(--white-soft);
+}
+
+.fi-sidebar-item-btn {
+  border-inline-start: 3px solid transparent;        /* مكان علامة العنصر النشط (من غير ما المحتوى يتزحزح) */
+}
+
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
+  background-color: var(--egypt-gold-soft);
+  border-inline-start-color: var(--egypt-gold);
+}
+
+/* ---------- عناوين الصفحات ---------- */
+.fi-header-heading {
+  color: var(--egypt-green);
+  font-weight: 700;
+}
+
+/* ---------- الأزرار ---------- */
+.fi-btn {
+  border-radius: var(--r);
+}
+
+/* الزرار الأساسي: hover بأخضر أغمق + حد ذهبي (بدل الأفتح اللي Filament بيستخدمه) */
+.fi-btn.fi-color-primary:not(.fi-outlined) {
+  --hover-bg: var(--egypt-green-deep);
+}
+
+.fi-btn.fi-color-primary:not(.fi-outlined):hover {
+  outline: 1px solid var(--egypt-gold);
+  outline-offset: -1px;
+}
+
+/* ---------- الحقول ---------- */
+.fi-input-wrp {
+  border-radius: var(--r);
+  background-color: var(--white-soft);
+  font-family: var(--ff-body);
+}
+
+/* focus: حد ذهبي + هالة ذهبية ناعمة (ما عدا الحقل الغلط، بيفضل أحمر) */
+.fi-input-wrp:focus-within:not(.fi-invalid) {
+  --tw-ring-color: var(--egypt-gold);
+  outline: 3px solid var(--egypt-gold-soft);
+  outline-offset: 0;
+}
+
+/* ---------- الكروت والأقسام ---------- */
+.fi-section,
+.fi-ta-ctn,
+.fi-wi-stats-overview-stat {
+  border-radius: var(--r-lg);
+  background-color: var(--white-soft);
+}
+
+.fi-wi-stats-overview-stat-value {
+  color: var(--egypt-green);
+  font-family: var(--ff-body);
+  font-weight: 700;
+  font-variant-numeric: lining-nums;
+}
+
+/* ---------- الجداول ---------- */
+.fi-ta-table {
+  font-family: var(--ff-body);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.fi-ta-table thead,
+.fi-ta-table thead > tr,
+.fi-ta-header-cell {
+  background-color: var(--egypt-green);
+}
+
+.fi-ta-header-cell,
+.fi-ta-header-cell :is(span, button, svg) {
+  color: #fff;
+}
+
+.fi-ta-row:nth-child(even) {
+  background-color: rgba(244, 240, 230, 0.55);       /* --papyrus خفيف */
+}
+
+.fi-ta-row:hover {
+  background-color: var(--papyrus);
+}
+
+/* ---------- صفحة الدخول ---------- */
+.fi-simple-layout {
+  background-color: var(--ivory);
+}
+
+.fi-simple-main {
+  border-radius: var(--r-lg);
+  background-color: var(--white-soft);
+  border-top: 3px solid var(--egypt-gold);
+  box-shadow: var(--shadow);
+}
+
+/* ---------- إمكانية الوصول ---------- */
+a:focus-visible {
+  outline: 2px solid var(--egypt-gold);
+  outline-offset: 2px;
+}
+
+::selection {
+  background-color: var(--egypt-gold-soft);
+  color: var(--charcoal);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

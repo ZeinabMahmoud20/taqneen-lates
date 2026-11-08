@@ -31,7 +31,7 @@ class OverdueAgingChart extends ChartWidget
                 [
                     'label' => 'المبلغ المتبقي',
                     'data' => array_column($aging, 'amount'),
-                    'backgroundColor' => ['#facc15', '#fb923c', '#f97316', '#ef4444', '#b91c1c'],
+                    'backgroundColor' => ['#D1B574', '#B8954F', '#B27A24', '#A93232', '#9B2C2C'],
                 ],
             ],
             'labels' => array_column($aging, 'label'),

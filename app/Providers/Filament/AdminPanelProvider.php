@@ -15,6 +15,9 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\Support\Theme\KfsTheme;
+use Filament\FontProviders\LocalFontProvider;
+use Filament\View\PanelsRenderHook;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -27,9 +30,18 @@ class AdminPanelProvider extends PanelProvider
             ->brandName('نظام المتأخرات')
             ->login()
             ->userMenu(false)
-            ->colors([
-                'primary' => Color::Amber,
-            ])
+                    ->darkMode(false)   // الـ design system فاتح فقط، فنشيل زرار الوضع الداكن
+        ->font(
+            'Tajawal',
+            url: fn (): string => asset('css/kfs/fonts.css'),
+            provider: LocalFontProvider::class,
+        )
+        ->colors(KfsTheme::colors())
+        ->renderHook(
+            PanelsRenderHook::STYLES_AFTER,
+            fn (): string => '<link rel="stylesheet" href="' . asset('css/kfs/theme.css')
+                . '?v=' . @filemtime(public_path('css/kfs/theme.css')) . '">',
+        )
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
