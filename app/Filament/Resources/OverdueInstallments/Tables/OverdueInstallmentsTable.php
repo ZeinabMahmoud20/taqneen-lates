@@ -82,7 +82,7 @@ class OverdueInstallmentsTable
                     ->sortable()
                     ->summarize(Sum::make()->label('الإجمالي')),
             ])
-            ->defaultSort('days_overdue', 'desc')
+            ->defaultSort('citizen_name', 'asc')
             ->filters([
                 SelectFilter::make('center_id')
                     ->label('المركز')

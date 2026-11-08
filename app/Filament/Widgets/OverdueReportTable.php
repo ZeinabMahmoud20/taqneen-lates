@@ -51,6 +51,7 @@ class OverdueReportTable extends TableWidget
         return OverdueInstallment::query()
             ->when($centerId, fn ($query) => $query->where('center_id', $centerId))
             ->when($paymentPlanId, fn ($query) => $query->where('payment_plan_id', $paymentPlanId))
+            ->orderBy('citizen_name', 'asc')
             ->orderByDesc('days_overdue');
     }
 
