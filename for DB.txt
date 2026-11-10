@@ -1,0 +1,4 @@
+php artisan arrears:import storage\app\arrears.xlsx --dry-run
+php artisan arrears:import storage\app\arrears.xlsx
+
+App\Models\Citizen::query()->delete();

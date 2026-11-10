@@ -10,12 +10,18 @@ class PaymentPlan extends Model
 {
     use Auditable;
 
-    protected $fillable = ['name', 'installments_count', 'is_cash'];
+    protected $fillable = [
+        'name',
+        'installments_count',
+        'is_cash',
+        'is_completed',
+    ];
 
     protected function casts(): array
     {
         return [
             'is_cash' => 'boolean',
+            'is_completed' => 'boolean',
             'installments_count' => 'integer',
         ];
     }

@@ -7,8 +7,11 @@ use App\Filament\Resources\OverdueInstallments\Tables\OverdueInstallmentsTable;
 use App\Models\OverdueInstallment;
 use BackedEnum;
 use Filament\Resources\Resource;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 /**
  * شاشة المتأخرات - قراءة فقط (عرض وتصدير).
@@ -56,7 +59,35 @@ class OverdueInstallmentResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return OverdueInstallmentsTable::configure($table);
+        $table = OverdueInstallmentsTable::configure($table);
+
+        // عمود "مرات التأخير": عدد الأقساط المتأخرة لنفس المواطن، بعد اسمه مباشرة.
+        $columns = [];
+
+        foreach ($table->getColumns() as $name => $column) {
+            $columns[$name] = $column;
+
+            if ($name === 'citizen_name') {
+                $columns['citizen_overdue_count'] = TextColumn::make('citizen_overdue_count')
+                    ->label('مرات التأخير')
+                    ->badge()
+                    ->color(fn ($state): string => ((int) $state) > 1 ? 'danger' : 'gray');
+            }
+        }
+
+        $table->columns($columns);
+
+        return $table
+            // نفس تعريف view المتأخرات (قسط pending وموعد استحقاقه عدّى).
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->addSelect([
+                'citizen_overdue_count' => DB::table('overdue_installments as citizen_overdue')
+                    ->selectRaw('count(*)')
+                    ->whereColumn('citizen_overdue.citizen_id', 'overdue_installments.citizen_id'),
+            ]))
+            // صفوف كل مركز تظهر تحت بعضها، وداخل المركز الأسماء أبجديًا.
+            ->defaultSort(fn (Builder $query): Builder => $query
+                ->orderBy('center_name')
+                ->orderBy('citizen_name'));
     }
 
     public static function getPages(): array

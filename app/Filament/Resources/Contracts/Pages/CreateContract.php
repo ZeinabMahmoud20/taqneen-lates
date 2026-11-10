@@ -65,11 +65,10 @@ class CreateContract extends CreateRecord
         } catch (ValidationException $e) {
             Notification::make()
                 ->danger()
-                ->title('ماتسجلش العقد')
+                ->title('لم يتم تسجيل العقد')
                 ->body(collect($e->errors())->flatten()->implode(' '))
                 ->persistent()
                 ->send();
-
             $this->halt();
         }
     }
