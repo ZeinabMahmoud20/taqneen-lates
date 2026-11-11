@@ -39,6 +39,10 @@ class OverdueReportTable extends TableWidget
 
         return $table
             ->query(fn (): Builder => $this->getRecordsQuery())
+            // صفوف كل مركز تظهر تحت بعضها، وداخل المركز الأسماء أبجديًا (زي شاشة المتأخرات).
+            ->defaultSort(fn (Builder $query): Builder => $query
+                ->orderBy('center_name')
+                ->orderBy('citizen_name'))
             ->filters([])
             ->paginated(false);
     }
@@ -48,11 +52,10 @@ class OverdueReportTable extends TableWidget
         $centerId = $this->positiveInteger($this->pageFilters['center_id'] ?? null);
         $paymentPlanId = $this->positiveInteger($this->pageFilters['payment_plan_id'] ?? null);
 
+        // الترتيب بيتحدد في table() عبر defaultSort (تجميع بالمركز) زي شاشة المتأخرات.
         return OverdueInstallment::query()
             ->when($centerId, fn ($query) => $query->where('center_id', $centerId))
-            ->when($paymentPlanId, fn ($query) => $query->where('payment_plan_id', $paymentPlanId))
-            ->orderBy('citizen_name', 'asc')
-            ->orderByDesc('days_overdue');
+            ->when($paymentPlanId, fn ($query) => $query->where('payment_plan_id', $paymentPlanId));
     }
 
     private function positiveInteger(mixed $value): ?int
@@ -127,14 +130,14 @@ class OverdueReportTable extends TableWidget
                 #report-print-root .fi-ta-table th,
                 #report-print-root .fi-ta-table td { border: 1px solid #777 !important; background: #fff !important; color: #000 !important; text-align: right !important; padding: 4px !important; font-size: 8pt !important; line-height: 1.25 !important; white-space: normal !important; overflow-wrap: anywhere !important; }
                 #report-print-root .fi-ta-table th:nth-child(1), #report-print-root .fi-ta-table td:nth-child(1),
-                #report-print-root .fi-ta-table th:nth-child(5), #report-print-root .fi-ta-table td:nth-child(5),
-                #report-print-root .fi-ta-table th:nth-child(7), #report-print-root .fi-ta-table td:nth-child(7) { width: 8% !important; }
-                #report-print-root .fi-ta-table th:nth-child(2), #report-print-root .fi-ta-table td:nth-child(2) { width: 26% !important; }
+                #report-print-root .fi-ta-table th:nth-child(5), #report-print-root .fi-ta-table td:nth-child(5) { width: 8% !important; }
+                #report-print-root .fi-ta-table th:nth-child(2), #report-print-root .fi-ta-table td:nth-child(2) { width: 20% !important; }
                 #report-print-root .fi-ta-table th:nth-child(3), #report-print-root .fi-ta-table td:nth-child(3) { width: 9% !important; }
-                #report-print-root .fi-ta-table th:nth-child(4), #report-print-root .fi-ta-table td:nth-child(4),
-                #report-print-root .fi-ta-table th:nth-child(8), #report-print-root .fi-ta-table td:nth-child(8),
-                #report-print-root .fi-ta-table th:nth-child(9), #report-print-root .fi-ta-table td:nth-child(9) { width: 10% !important; }
+                #report-print-root .fi-ta-table th:nth-child(4), #report-print-root .fi-ta-table td:nth-child(4) { width: 10% !important; }
                 #report-print-root .fi-ta-table th:nth-child(6), #report-print-root .fi-ta-table td:nth-child(6) { width: 11% !important; }
+                #report-print-root .fi-ta-table th:nth-child(7), #report-print-root .fi-ta-table td:nth-child(7) { width: 6% !important; }
+                #report-print-root .fi-ta-table th:nth-child(8), #report-print-root .fi-ta-table td:nth-child(8),
+                #report-print-root .fi-ta-table th:nth-child(9), #report-print-root .fi-ta-table td:nth-child(9) { width: 14% !important; }
                 #report-print-root .fi-ta-table thead th { background: #f3f4f6 !important; font-weight: 700 !important; }
                 #report-print-root .print-summary-row th,
                 #report-print-root .print-summary-row td { background: #f3f4f6 !important; border-top: 2px solid #000 !important; font-weight: 700 !important; padding-top: 6px !important; padding-bottom: 6px !important; }
