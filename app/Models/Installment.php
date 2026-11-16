@@ -17,7 +17,7 @@ class Installment extends Model
     public const STATUS_PAID = 'paid';
 
     protected $fillable = [
-        'contract_id', 'installment_no', 'due_date', 'amount',
+        'contract_id', 'installment_no', 'due_date', 'permit_date', 'amount',
         'paid_amount', 'paid_at', 'status', 'created_by', 'updated_by',
     ];
 
@@ -25,6 +25,7 @@ class Installment extends Model
     {
         return [
             'due_date' => 'date',
+            'permit_date' => 'date',
             'paid_at' => 'date',
             'amount' => 'decimal:2',
             'paid_amount' => 'decimal:2',

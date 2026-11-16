@@ -50,6 +50,11 @@ class InstallmentsRelationManager extends RelationManager
                 DatePicker::make('due_date')
                     ->label('تاريخ السداد المستحق')
                     ->helperText('سيبه فاضي لو مش معروف. القسط من غير موعد مش بيظهر في المتأخرات.'),
+
+                DatePicker::make('permit_date')
+                    ->label('تاريخ الأذن')
+                    ->helperText('تاريخ إضافي بيتسجل من ملف «إضافة أقساط»، ومش بيأثر على موعد استحقاق القسط.')
+                    ->maxDate(today()),
             ]);
     }
 
@@ -60,12 +65,17 @@ class InstallmentsRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('installment_no')
                     ->label('القسط')
-                    ->formatStateUsing(fn ($state): string => 'القسط ' . $state),
+                    ->formatStateUsing(fn ($state): string => 'القسط '.$state),
 
                 TextColumn::make('due_date')
                     ->label('تاريخ السداد المستحق')
                     ->date('Y-m-d')
                     ->placeholder('بدون موعد استحقاق'),
+
+                TextColumn::make('permit_date')
+                    ->label('تاريخ الأذن')
+                    ->date('Y-m-d')
+                    ->placeholder('—'),
 
                 TextColumn::make('amount')
                     ->label('المبلغ')
@@ -121,9 +131,9 @@ class InstallmentsRelationManager extends RelationManager
             ->color('success')
             ->visible(fn (Installment $record): bool => ! $record->isPaid()
                 && (auth()->user()?->can('update', $record) ?? false))
-            ->modalHeading(fn (Installment $record): string => 'تسجيل سداد القسط رقم ' . $record->installment_no)
+            ->modalHeading(fn (Installment $record): string => 'تسجيل سداد القسط رقم '.$record->installment_no)
             ->modalDescription(fn (Installment $record): string => 'المبلغ المستحق: '
-                . number_format((float) $record->amount, 2) . ' (القسط بيتسدد بقيمته كاملة)')
+                .number_format((float) $record->amount, 2).' (القسط بيتسدد بقيمته كاملة)')
             ->modalSubmitActionLabel('تسجيل السداد')
             ->schema([
                 DatePicker::make('paid_at')
@@ -165,7 +175,7 @@ class InstallmentsRelationManager extends RelationManager
             ->icon('heroicon-o-chat-bubble-left-ellipsis')
             ->color('gray')
             ->visible(fn (): bool => auth()->user()?->can('create', InstallmentNote::class) ?? false)
-            ->modalHeading(fn (Installment $record): string => 'ملاحظة على القسط رقم ' . $record->installment_no)
+            ->modalHeading(fn (Installment $record): string => 'ملاحظة على القسط رقم '.$record->installment_no)
             ->schema([
                 Textarea::make('note')
                     ->label('الملاحظة')

@@ -6,8 +6,6 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use OpenSpout\Reader\XLSX\Options;
 use OpenSpout\Reader\XLSX\Reader;
-use XMLReader;
-use ZipArchive;
 
 /**
  * بيقرأ ملف الإكسيل ويحوّله لصفوف منظّمة. (PHP صافي - مفيهوش قاعدة بيانات)
@@ -106,58 +104,13 @@ class ArrearsSheetParser
      */
     private function assertFileCanBeOpened(string $path): void
     {
-        if (! class_exists(ZipArchive::class)) {
-            throw new ImportFormatException(
-                'السيرفر ناقصه إضافة PHP Zip (ext-zip). فعّلها من php.ini أو ثبّت php-zip، وبعدها أعد تشغيل PHP/السيرفر.'
-            );
-        }
-
-        if (! class_exists(XMLReader::class)) {
-            throw new ImportFormatException(
-                'السيرفر ناقصه إضافة PHP XMLReader (ext-xmlreader). فعّلها من php.ini أو ثبّت php-xml، وبعدها أعد تشغيل PHP/السيرفر.'
-            );
-        }
-
-        if (! is_file($path)) {
-            throw new ImportFormatException(
-                'الملف المرفوع مش موجود على السيرفر. جرّب ترفعه تاني، ولو المشكلة كررت راجع صلاحيات مجلد storage/app/private.'
-            );
-        }
-
-        if (! is_readable($path)) {
-            throw new ImportFormatException(
-                'الملف مرفوع لكن السيرفر مش قادر يقرأه. راجع صلاحيات مجلد storage/app/private للمستخدم اللي بيشغّل PHP.'
-            );
-        }
+        (new ExcelFileGuard())->assertCanBeOpened($path);
     }
 
     /** ترجمة أخطاء OpenSpout الشائعة لرسالة مفهومة للمستخدم */
     private function openErrorMessage(\Throwable $e): string
     {
-        $message = $e->getMessage();
-
-        if (str_contains($message, 'Class "ZipArchive" not found')) {
-            return 'السيرفر ناقصه إضافة PHP Zip (ext-zip). فعّلها من php.ini أو ثبّت php-zip، وبعدها أعد تشغيل PHP/السيرفر.';
-        }
-
-        if (str_contains($message, 'Class "XMLReader" not found')) {
-            return 'السيرفر ناقصه إضافة PHP XMLReader (ext-xmlreader). فعّلها من php.ini أو ثبّت php-xml، وبعدها أعد تشغيل PHP/السيرفر.';
-        }
-
-        if (str_contains($message, 'Not a zip archive') || str_contains($message, 'Zip archive inconsistent')) {
-            return 'الملف تالف أو مش xlsx حقيقي. افتحه في Excel واعمله Save As بصيغة xlsx وجرّب تاني.';
-        }
-
-        if (str_contains($message, 'not readable') || str_contains($message, 'Cannot perform I/O')
-            || str_contains($message, 'Can\'t open file') || str_contains($message, 'Permission denied')) {
-            return 'السيرفر مش قادر يقرأ الملف. راجع صلاحيات مجلد storage/app/private.';
-        }
-
-        if (str_contains($message, 'writable folder') || str_contains($message, 'Unable to create folder')) {
-            return 'مجلد الملفات المؤقتة على السيرفر مش قابل للكتابة. راجع صلاحيات storage/app/private.';
-        }
-
-        return 'مش قادر أفتح الملف. اتأكد إنه ملف Excel بصيغة xlsx، وراجع سجل الأخطاء laravel.log للتفاصيل.';
+        return (new ExcelFileGuard())->messageForOpenError($e);
     }
 
     private function parseSheet(\OpenSpout\Reader\SheetInterface $sheet): array

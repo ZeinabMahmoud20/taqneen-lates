@@ -6,6 +6,7 @@ use App\Models\Citizen;
 use App\Models\Payment;
 use App\Models\PaymentPlan;
 use App\Models\Representative;
+use App\Models\User;
 use App\Services\ContractService;
 use App\Services\InstallmentPaymentService;
 use DomainException;
@@ -18,6 +19,7 @@ class ContractScreensSupportTest extends TestCase
     use RefreshDatabase;
 
     private PaymentPlan $threeYears;
+
     private ContractService $contracts;
 
     protected function setUp(): void
@@ -25,13 +27,13 @@ class ContractScreensSupportTest extends TestCase
         parent::setUp();
 
         $this->threeYears = PaymentPlan::create(['name' => 'ثلاث سنوات', 'installments_count' => 3, 'is_cash' => false]);
-        $this->contracts = new ContractService();
+        $this->contracts = new ContractService;
     }
 
     private function contractWithoutDownDate(string $code = 'S-1')
     {
         return $this->contracts->create(
-            Citizen::create(['name' => 'مواطن ' . $code]),
+            Citizen::create(['name' => 'مواطن '.$code]),
             $this->threeYears,
             ['code' => $code, 'down_payment_amount' => 1000, 'total_price' => 1600],
             [100, 200, 300],
@@ -74,7 +76,7 @@ class ContractScreensSupportTest extends TestCase
     {
         $contract = $this->contractWithoutDownDate();
         $first = $contract->installments->first();
-        (new InstallmentPaymentService())->pay($first, '2025-01-20');
+        (new InstallmentPaymentService)->pay($first, '2025-01-20');
 
         // null -> تاريخ: مسموح
         $first->refresh()->update(['due_date' => '2025-01-10']);
@@ -151,7 +153,7 @@ class ContractScreensSupportTest extends TestCase
 
         // المستخدم ضاف التاريخ بعدين
         $contract->update(['down_payment_date' => '2024-01-10']);
-        $this->contracts->syncDownPayment($contract->fresh(), 1);
+        $this->contracts->syncDownPayment($contract->fresh(), User::factory()->create()->id);
 
         $payment = Payment::where('contract_id', $contract->id)->where('type', Payment::TYPE_DOWN_PAYMENT)->firstOrFail();
         $this->assertSame('1000.00', $payment->amount);
