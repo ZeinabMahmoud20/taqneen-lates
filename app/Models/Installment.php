@@ -75,6 +75,13 @@ class Installment extends Model
             ->whereDate('due_date', '<', today());
     }
 
+    public function scopeUpcomingWithinDays(Builder $query, int $days): Builder
+    {
+        return $query->where('status', self::STATUS_PENDING)
+            ->whereDate('due_date', '>=', today())
+            ->whereDate('due_date', '<=', today()->addDays(max(0, $days)));
+    }
+
     // قسط لسه ماتدفعش ومفيش له موعد استحقاق (بيانات ناقصة محتاجة تكملة يدوي)
     public function scopeMissingDueDate(Builder $query): Builder
     {
