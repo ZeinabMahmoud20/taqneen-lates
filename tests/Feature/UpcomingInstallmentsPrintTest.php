@@ -78,6 +78,26 @@ class UpcomingInstallmentsPrintTest extends TestCase
             ->assertSeeInOrder(['PRINT-1', 'PRINT-2']);
     }
 
+    public function test_print_supports_10_to_20_days_filter(): void
+    {
+        $this->actingAs(User::factory()->create(['is_active' => true]));
+
+        $center = Center::create(['name' => 'المركز ج']);
+        $plan = PaymentPlan::create([
+            'name' => 'قسط واحد',
+            'installments_count' => 1,
+            'is_cash' => false,
+        ]);
+
+        $this->createContract('PRINT-15', $center, $plan, today()->addDays(15)->toDateString());
+        $this->createContract('PRINT-5', $center, $plan, today()->addDays(5)->toDateString());
+
+        $this->get(route('admin.upcoming-installments.print', ['days_range' => '10_20']))
+            ->assertOk()
+            ->assertSee('PRINT-15')
+            ->assertDontSee('PRINT-5');
+    }
+
     private function createContract(
         string $code,
         Center $center,

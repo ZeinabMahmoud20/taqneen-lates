@@ -101,6 +101,7 @@ class UpcomingInstallmentsTable
                         'today' => 'مستحق اليوم',
                         '1_7' => 'خلال 7 أيام',
                         '8_15' => 'من 8 إلى 15 يومًا',
+                        '10_20' => 'من 10 إلى 20 يومًا',
                         '16_30' => 'من 16 إلى 30 يومًا',
                     ])
                     ->query(function (
@@ -118,6 +119,11 @@ class UpcomingInstallmentsTable
                             '8_15' => $query->whereBetween(
                                 'days_remaining',
                                 [8, 15]
+                            ),
+
+                            '10_20' => $query->whereBetween(
+                                'days_remaining',
+                                [10, 20]
                             ),
 
                             '16_30' => $query->whereBetween(

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Citizen;
 use App\Models\Contract;
+use App\Models\Installment;
 use App\Models\Payment;
 use App\Models\PaymentPlan;
 use Illuminate\Support\Carbon;
@@ -133,6 +134,12 @@ class ContractService
     public function syncDownPayment(Contract $contract, ?int $userId = null): void
     {
         if ((float) $contract->down_payment_amount <= 0 || $contract->down_payment_date === null) {
+            // العقد بقى كاش أو اتحذف المقدم: مفيش سجل مقدم في الحالتين
+            Payment::query()
+                ->where('contract_id', $contract->id)
+                ->where('type', Payment::TYPE_DOWN_PAYMENT)
+                ->delete();
+
             return;
         }
 
@@ -157,6 +164,170 @@ class ContractService
             'type' => Payment::TYPE_DOWN_PAYMENT,
             'created_by' => $userId,
         ]);
+    }
+
+    /**
+     * تحقق من تغيير نوع السداد في شاشة التعديل وحساب إجمالي الثمن الجديد.
+     * الأقساط المسددة بتفضل زي ما هي ومش بتدخل في الخانات اللي بيكتبها المستخدم.
+     *
+     * @param  array<int, array<string, mixed>>  $rows  الأقساط غير المسددة اللي المستخدم كتب قيمتها
+     * @return string إجمالي الثمن الجديد
+     */
+    public function prepareEditTotal(Contract $contract, PaymentPlan $plan, array $data): string
+    {
+        $paid = $contract->installments()->where('status', Installment::STATUS_PAID)->get();
+        $rows = array_values($data['installments'] ?? []);
+
+        if ($plan->is_cash) {
+            if ($paid->isNotEmpty()) {
+                $this->fail('payment_plan_id', 'لا يمكن تحويل العقد إلى كاش وفيه أقساط مسددة. ألغِ السداد أولاً.');
+            }
+
+            return number_format($this->cents($data['cash_amount'] ?? 0) / 100, 2, '.', '');
+        }
+
+        $pendingCount = $plan->installments_count - $paid->count();
+
+        if ($pendingCount < 0 || count($rows) !== $pendingCount) {
+            $this->fail('installments', "نوع السداد ({$plan->name}) يتطلب {$plan->installments_count} قسطاً، منها {$paid->count()} مسدد. أدخل ".max(0, $pendingCount)." قسطاً غير مسدد.");
+        }
+
+        foreach ($rows as $row) {
+            $amount = $this->rowAmount($row);
+            if ($amount === null || $amount <= 0) {
+                $this->fail('installments', 'قيمة كل قسط لازم تكون رقم أكبر من صفر.');
+            }
+        }
+
+        $totalCents = $this->cents($data['down_payment_amount'] ?? 0)
+            + $paid->sum(fn (Installment $i): int => $this->cents($i->amount))
+            + array_sum(array_map(fn (array $row): int => $this->cents($this->rowAmount($row) ?? 0), $rows));
+
+        return number_format($totalCents / 100, 2, '.', '');
+    }
+
+    /**
+     * مزامنة جدول الأقساط بعد تغيير نوع السداد:
+     *  - الأقساط المسددة بتتساب تماماً (رقمها، مبلغها وموعدها).
+     *  - الأقساط غير المسددة القديمة بيتحدّث مبلغها، والجديدة بيتسجل موعدها من تاريخ المقدم.
+     *  - الزيادة عن العدد المطلوب بتتحذف (غير المسددة فقط).
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return int عدد الأقساط الجديدة اللي اتضافت
+     */
+    public function syncInstallmentsForEdit(Contract $contract, PaymentPlan $plan, array $rows, ?int $userId = null): int
+    {
+        $rows = $plan->is_cash ? [] : array_values($rows);
+
+        return DB::transaction(function () use ($contract, $plan, $rows, $userId): int {
+            $all = $contract->installments()->orderBy('installment_no')->get();
+            $pending = $all->where('status', Installment::STATUS_PENDING)->values();
+
+            if ($plan->is_cash) {
+                foreach ($pending as $installment) {
+                    $installment->delete();
+                }
+
+                return 0;
+            }
+
+            $kept = $pending->take(count($rows))->values();
+            $toDelete = $pending->slice(count($rows))->values();
+            $usedNumbers = $all->pluck('installment_no')->map(fn ($no): int => (int) $no)->all();
+            $usedNumbers = array_diff($usedNumbers, $toDelete->pluck('installment_no')->map(fn ($no): int => (int) $no)->all());
+
+            foreach ($kept as $index => $installment) {
+                $installment->update([
+                    'amount' => $this->rowAmount($rows[$index]),
+                    'updated_by' => $userId,
+                ]);
+            }
+
+            $created = 0;
+            for ($i = $kept->count(); $i < count($rows); $i++) {
+                $number = 1;
+                while ($number <= $plan->installments_count && in_array($number, $usedNumbers, true)) {
+                    $number++;
+                }
+
+                if ($number > $plan->installments_count) {
+                    $this->fail('installments', 'عدد الأقساط المطلوب أكبر من عدد الأقساط المتاح في نوع السداد.');
+                }
+
+                $contract->installments()->create([
+                    'installment_no' => $number,
+                    'amount' => $this->rowAmount($rows[$i]),
+                    'due_date' => $this->dueDateForNumber($contract, $number),
+                    'status' => Installment::STATUS_PENDING,
+                    'created_by' => $userId,
+                ]);
+
+                $usedNumbers[] = $number;
+                $created++;
+            }
+
+            foreach ($toDelete as $installment) {
+                $installment->delete();
+            }
+
+            return $created;
+        });
+    }
+
+    /** سجل دفع الكاش يطابق بيانات العقد بعد التعديل (ويتحذف لو العقد بقى مقسّط). */
+    public function syncCashPayment(Contract $contract, ?string $paidAt, ?int $userId = null): void
+    {
+        $payment = Payment::query()
+            ->where('contract_id', $contract->id)
+            ->where('type', Payment::TYPE_CASH)
+            ->first();
+
+        $isCash = (bool) PaymentPlan::query()->whereKey($contract->payment_plan_id)->value('is_cash');
+
+        if (! $isCash) {
+            $payment?->delete();
+
+            return;
+        }
+
+        if ((float) $contract->total_price <= 0 || blank($paidAt)) {
+            return;
+        }
+
+        $attributes = [
+            'amount' => $contract->total_price,
+            'paid_at' => Carbon::parse($paidAt)->toDateString(),
+        ];
+
+        if ($payment) {
+            $payment->update($attributes);
+
+            return;
+        }
+
+        Payment::create($attributes + [
+            'contract_id' => $contract->id,
+            'type' => Payment::TYPE_CASH,
+            'created_by' => $userId,
+        ]);
+    }
+
+    private function dueDateForNumber(Contract $contract, int $number): ?string
+    {
+        if ($contract->down_payment_date === null) {
+            return null;
+        }
+
+        return Carbon::parse($contract->down_payment_date)->startOfDay()
+            ->addYearsNoOverflow($number)
+            ->toDateString();
+    }
+
+    private function rowAmount(mixed $row): ?float
+    {
+        $amount = is_array($row) ? ($row['amount'] ?? null) : $row;
+
+        return is_numeric($amount) ? (float) $amount : null;
     }
 
     /** @return list<?string> */

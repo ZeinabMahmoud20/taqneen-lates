@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 
 class UpcomingInstallmentPrintController extends Controller
 {
-    private const DAYS_RANGES = ['today', '1_7', '8_15', '16_30'];
+    private const DAYS_RANGES = ['today', '1_7', '8_15', '10_20', '16_30'];
 
     public function __invoke(Request $request): View
     {
@@ -41,6 +41,7 @@ class UpcomingInstallmentPrintController extends Controller
                     'today' => $query->where('days_remaining', 0),
                     '1_7' => $query->whereBetween('days_remaining', [1, 7]),
                     '8_15' => $query->whereBetween('days_remaining', [8, 15]),
+                    '10_20' => $query->whereBetween('days_remaining', [10, 20]),
                     '16_30' => $query->whereBetween('days_remaining', [16, 30]),
                     default => $query,
                 };

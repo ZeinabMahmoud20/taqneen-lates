@@ -270,4 +270,111 @@ class ContractAndPaymentTest extends TestCase
         $this->assertCount(0, OverdueInstallment::query()->get());
         $this->assertSame(0, Installment::overdue()->count());
     }
+
+    public function test_editing_payment_plan_keeps_paid_installments_and_rebuilds_the_pending_ones(): void
+    {
+        $contract = $this->threeYearContract($this->citizen());
+        $paid = $contract->installments->first();
+        $this->payments->pay($paid, '2025-01-20');
+
+        $fiveYears = PaymentPlan::create(['name' => 'خمس سنوات', 'installments_count' => 5, 'is_cash' => false]);
+        $rows = array_map(fn (int $amount): array => ['amount' => $amount], [111, 222, 333, 444]);
+        $data = [
+            'down_payment_amount' => 1000,
+            'installments' => $rows,
+        ];
+
+        // 1000 مقدم + 100 مسدد + 1110 أقساط جديدة
+        $this->assertSame('2210.00', $this->contracts->prepareEditTotal($contract, $fiveYears, $data));
+
+        $this->assertSame(2, $this->contracts->syncInstallmentsForEdit($contract, $fiveYears, $rows));
+
+        $installments = $contract->installments()->orderBy('installment_no')->get();
+        $this->assertCount(5, $installments);
+        $this->assertSame([1, 2, 3, 4, 5], $installments->pluck('installment_no')->map(fn ($no) => (int) $no)->all());
+        $this->assertSame(['100.00', '111.00', '222.00', '333.00', '444.00'], $installments->pluck('amount')->all());
+
+        // القسط المسدد ماتلمش
+        $paid->refresh();
+        $this->assertTrue($paid->isPaid());
+        $this->assertSame('100.00', $paid->amount);
+        $this->assertSame('2025-01-10', $paid->due_date->toDateString());
+        $this->assertSame('2025-01-20', $paid->paid_at->toDateString());
+
+        // الأقساط الجديدة موعدها = تاريخ المقدم + رقم القسط بالسنين
+        $this->assertSame('2028-01-10', $installments[3]->due_date->toDateString());
+        $this->assertSame('2029-01-10', $installments[4]->due_date->toDateString());
+    }
+
+    public function test_a_fully_paid_contract_can_still_be_edited_without_pending_installments(): void
+    {
+        $contract = $this->threeYearContract($this->citizen());
+        foreach ($contract->installments as $installment) {
+            $this->payments->pay($installment, Carbon::today());
+        }
+
+        $this->assertSame('1600.00', $this->contracts->prepareEditTotal($contract, $this->threeYears, [
+            'down_payment_amount' => 1000,
+        ]));
+        $this->assertSame(0, $this->contracts->syncInstallmentsForEdit($contract, $this->threeYears, []));
+
+        $this->assertSame(3, $contract->installments()->count());
+        $this->assertSame(3, $contract->installments()->where('status', Installment::STATUS_PAID)->count());
+    }
+
+    public function test_reducing_the_plan_count_deletes_only_the_extra_pending_installments(): void
+    {
+        $fiveYears = PaymentPlan::create(['name' => 'خمس سنوات', 'installments_count' => 5, 'is_cash' => false]);
+        $contract = $this->contracts->create(
+            $this->citizen(),
+            $fiveYears,
+            ['code' => 'EDIT-2', 'down_payment_amount' => 1000, 'down_payment_date' => '2024-01-10', 'total_price' => 2500],
+            [100, 200, 300, 400, 500],
+        );
+
+        $rows = array_map(fn (int $amount): array => ['amount' => $amount], [111, 222, 333]);
+        $data = ['down_payment_amount' => 1000, 'installments' => $rows];
+
+        $this->assertSame('1666.00', $this->contracts->prepareEditTotal($contract, $this->threeYears, $data));
+
+        $this->assertSame(0, $this->contracts->syncInstallmentsForEdit($contract, $this->threeYears, $rows));
+        $this->assertSame([111, 222, 333], $contract->installments()->orderBy('installment_no')->pluck('amount')->map(fn ($amount) => (int) $amount)->all());
+    }
+
+    public function test_cannot_switch_a_contract_with_paid_installments_to_cash(): void
+    {
+        $contract = $this->threeYearContract($this->citizen());
+        $this->payments->pay($contract->installments->first(), '2025-01-20');
+
+        $this->expectException(ValidationException::class);
+
+        $this->contracts->prepareEditTotal($contract, $this->cash, ['cash_amount' => 1600]);
+    }
+
+    public function test_switching_to_cash_removes_pending_installments_and_records_one_cash_payment(): void
+    {
+        $contract = $this->threeYearContract($this->citizen());
+
+        $this->assertSame('1500.00', $this->contracts->prepareEditTotal($contract, $this->cash, ['cash_amount' => 1500]));
+
+        $contract->update([
+            'payment_plan_id' => $this->cash->id,
+            'down_payment_amount' => 0,
+            'down_payment_date' => null,
+            'total_price' => 1500,
+        ]);
+
+        $this->assertSame(0, $this->contracts->syncInstallmentsForEdit($contract, $this->cash, []));
+        $this->contracts->syncDownPayment($contract->fresh());
+        $this->contracts->syncCashPayment($contract->fresh(), '2025-02-01');
+
+        $this->assertSame(0, $contract->installments()->count());
+        $this->assertSame(0, Payment::query()
+            ->where('contract_id', $contract->id)
+            ->where('type', Payment::TYPE_DOWN_PAYMENT)
+            ->count());
+        $cashPayment = Payment::query()->where('contract_id', $contract->id)->where('type', Payment::TYPE_CASH)->firstOrFail();
+        $this->assertSame('1500.00', $cashPayment->amount);
+        $this->assertSame('2025-02-01', $cashPayment->paid_at->toDateString());
+    }
 }
