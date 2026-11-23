@@ -54,13 +54,13 @@ class OverdueStatsOverview extends StatsOverviewWidget
                 ->descriptionIcon('heroicon-m-users')
                 ->color('warning'),
 
-            Stat::make('اتحصّل هذا الشهر', number_format($collectedThisMonth, 2))
-                ->description('أقساط اتسددت في شهر ' . now()->format('Y-m'))
+            Stat::make('تم تحصيل هذا الشهر', number_format($collectedThisMonth, 2))
+                ->description('أقساط تم تحصيلها في شهر ' . now()->format('Y-m'))
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success'),
 
-            Stat::make('بيانات ناقصة', number_format($missingDueDate))
-                ->description('قسط لسه ماتدفعش ومن غير موعد استحقاق')
+            Stat::make('بيانات غير مكتملة', number_format($missingDueDate))
+                ->description('قسط بدون موعد استحقاق')
                 ->descriptionIcon('heroicon-m-calendar-days')
                 ->color($missingDueDate > 0 ? 'warning' : 'gray')
                 ->url(ContractResource::getUrl('index', ['filters' => ['missing_data' => ['isActive' => true]]])),

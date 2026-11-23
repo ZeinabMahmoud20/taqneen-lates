@@ -41,9 +41,6 @@ class CitizensTable
                     ->searchable()
                     ->placeholder('—'),
 
-                TextColumn::make('currentRepresentative.name')
-                    ->label('النائب الحالي')
-                    ->placeholder('—'),
 
                 TextColumn::make('contracts_count')
                     ->label('العقود')

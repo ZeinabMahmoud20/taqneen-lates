@@ -29,8 +29,9 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->brandName('نظام المتأخرات')
             ->login()
-            ->userMenu(false)
-                    ->darkMode(false)   // الـ design system فاتح فقط، فنشيل زرار الوضع الداكن
+            ->userMenu(true)
+                    ->darkMode(true)   // الـ design system فاتح فقط، فنشيل زرار الوضع الداكن
+            
         ->font(
             'Tajawal',
             url: fn (): string => asset('css/kfs/fonts.css'),

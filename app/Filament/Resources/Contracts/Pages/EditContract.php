@@ -43,7 +43,7 @@ class EditContract extends EditRecord
         if ($filled > 0) {
             Notification::make()
                 ->success()
-                ->title("اتحسبت مواعيد استحقاق {$filled} قسط من تاريخ المقدم")
+                ->title("تم حساب مواعيد استحقاق {$filled} قسط من تاريخ المقدم")
                 ->send();
         }
     }

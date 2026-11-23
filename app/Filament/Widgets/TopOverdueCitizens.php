@@ -71,6 +71,6 @@ class TopOverdueCitizens extends TableWidget
                     ->url(fn (array $record): string => CitizenResource::getUrl('edit', ['record' => $record['citizen_id']])),
             ])
             ->paginated(false)
-            ->emptyStateHeading('مفيش متأخرات');
+            ->emptyStateHeading('لا يوجد متأخرات');
     }
 }

@@ -92,7 +92,7 @@ class AddInstallments extends Page
 
             Notification::make()
                 ->danger()
-                ->title('الملف مش مظبوط')
+                ->title('الملف غير متوافق مع الصيغة المطلوبة')
                 ->body(e($e->getMessage()))
                 ->persistent()
                 ->send();
@@ -105,7 +105,7 @@ class AddInstallments extends Page
 
             Notification::make()
                 ->danger()
-                ->title('ماتنفذتش العملية')
+                ->title('لم يتم تنفيذ العملية')
                 ->body(e($this->fatalError))
                 ->persistent()
                 ->send();
@@ -138,8 +138,8 @@ class AddInstallments extends Page
         if ($this->reportPath === null || ! is_file($this->reportPath)) {
             Notification::make()
                 ->danger()
-                ->title('مفيش تقرير جاهز')
-                ->body('نفّذ العملية تاني علشان يتولّد تقرير الأخطاء والتنبيهات.')
+                ->title('لا يوجد تقرير جاهز')
+                ->body('قم بتنفيذ العملية مرة آخرى حتى يتم توليد تقرير الأخطاء والتنبيهات.')
                 ->send();
 
             return null;
@@ -208,7 +208,7 @@ class AddInstallments extends Page
         }
 
         $notification = Notification::make()
-            ->title(($result['dry_run'] ?? false) ? 'نتيجة التحقق (ماتحفظش حاجة)' : 'نتيجة تسجيل السداد')
+            ->title(($result['dry_run'] ?? false) ? 'نتيجة التحقق ( لم يتم حفظ البيانات)' : 'نتيجة تسجيل السداد')
             ->body(implode('<br>', array_map(fn (string $line): string => e($line), $lines)))
             ->persistent();
 

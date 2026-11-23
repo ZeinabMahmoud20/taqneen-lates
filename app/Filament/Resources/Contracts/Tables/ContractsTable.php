@@ -87,7 +87,7 @@ class ContractsTable
                     ->query(fn (Builder $query): Builder => $query->whereHas('installments', fn (Builder $q) => $q->overdue())),
 
                 Filter::make('missing_data')
-                    ->label('بيانات ناقصة (قسط بدون موعد استحقاق)')
+                    ->label('بيانات غير مكتملة (قسط بدون موعد استحقاق)')
                     ->toggle()
                     ->query(fn (Builder $query): Builder => $query->whereHas('installments', fn (Builder $q) => $q->missingDueDate())),
             ])

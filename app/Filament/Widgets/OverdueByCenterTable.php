@@ -56,6 +56,6 @@ class OverdueByCenterTable extends TableWidget
                     ])),
             ])
             ->paginated(false)
-            ->emptyStateHeading('مفيش متأخرات');
+            ->emptyStateHeading('لا يوجد متأخرات');
     }
 }

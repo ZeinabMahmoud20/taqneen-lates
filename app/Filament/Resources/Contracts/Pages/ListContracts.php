@@ -56,7 +56,7 @@ class ListContracts extends ListRecords
             ->color('gray')
             ->visible(fn (): bool => auth()->user()?->can('create', Contract::class) ?? false)
             ->modalHeading('استيراد عقود وأقساط من Excel')
-            ->modalDescription('استخدم القالب الرسمي (زرار «تحميل القالب»). ابدأ بـ «تحقق فقط» علشان تشوف النتيجة من غير ما يتحفظ حاجة، وبعدين استورد فعلاً.')
+            ->modalDescription('استخدم القالب الرسمي (زرار «تحميل القالب»). ابدأ بـ «تحقق فقط»  للحصول على النتيجةبدون الحفظ في قاعدة البينات ثم استورد فعلاً.')
             ->modalSubmitActionLabel('ابدأ')
             ->schema([
                 FileUpload::make('file')
@@ -74,8 +74,8 @@ class ListContracts extends ListRecords
                     ->required(),
 
                 Toggle::make('dry_run')
-                    ->label('تحقق فقط (من غير حفظ)')
-                    ->helperText('شغّال افتراضياً للأمان. أوقفه علشان يتحفظ الاستيراد فعلاً.')
+                    ->label('تحقق فقط (بدون حفظ)')
+                    ->helperText('شغّال افتراضياً للأمان. أوقفه حتى يتم حفظ الاستيراد فعلاً.')
                     ->default(true),
             ])
             ->action(function (array $data) {
@@ -93,7 +93,7 @@ class ListContracts extends ListRecords
                 } catch (ImportFormatException $e) {
                     Notification::make()
                         ->danger()
-                        ->title('الملف مش مظبوط')
+                        ->title('الملف غير متوافق مع الصيغة المطلوبة')
                         ->body(e($e->getMessage()))
                         ->persistent()
                         ->send();
@@ -148,7 +148,7 @@ class ListContracts extends ListRecords
 
         // الجسم بيتعرض كـ HTML متنضف، فكل سطر بيتعمله escape وبنفصل بينهم بـ <br>
         $notification = Notification::make()
-            ->title($result->dryRun ? 'نتيجة التحقق (ماتحفظش حاجة)' : 'نتيجة الاستيراد')
+            ->title($result->dryRun ? 'نتيجة التحقق ( لم يتم حفظ البيانات)' : 'نتيجة الاستيراد')
             ->body(implode('<br>', array_map(fn (string $line): string => e($line), $lines)))
             ->persistent();
 

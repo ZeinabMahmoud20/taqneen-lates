@@ -8,6 +8,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use function Livewire\wrap;
 
 class OverdueInstallmentsTable
 {
@@ -23,7 +24,8 @@ class OverdueInstallmentsTable
                 TextColumn::make('citizen_name')
                     ->label('اسم المواطن')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->wrap(),
 
                 TextColumn::make('center_name')
                     ->label('المركز')
@@ -32,17 +34,6 @@ class OverdueInstallmentsTable
 
                 TextColumn::make('citizen_phones')
                     ->label('تليفون المواطن')
-                    ->searchable()
-                    ->placeholder('—'),
-
-                TextColumn::make('representative_name')
-                    ->label('النائب')
-                    ->description(fn ($record): ?string => $record->representative_relationship)
-                    ->searchable()
-                    ->placeholder('—'),
-
-                TextColumn::make('representative_phones')
-                    ->label('تليفون النائب')
                     ->searchable()
                     ->placeholder('—'),
 
@@ -76,11 +67,11 @@ class OverdueInstallmentsTable
                     ->numeric(decimalPlaces: 2)
                     ->sortable(),
 
-                TextColumn::make('remaining_amount')
+                /*TextColumn::make('remaining_amount')
                     ->label('المتبقي')
                     ->numeric(decimalPlaces: 2)
                     ->sortable()
-                    ->summarize(Sum::make()->label('الإجمالي')),
+                    ->summarize(Sum::make()->label('الإجمالي')), */
             ])
             ->defaultSort('citizen_name', 'asc')
             ->filters([

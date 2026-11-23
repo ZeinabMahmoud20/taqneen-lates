@@ -35,7 +35,7 @@ class UserForm
                     ->default(UserRole::Leadership)
                     ->disabled(fn (?Model $record): bool => $record?->getKey() === auth()->id())
                     ->helperText(fn (?Model $record): ?string => $record?->getKey() === auth()->id()
-                        ? 'مش مسموح تغيّر دور حسابك بنفسك. اطلب من مشرف عام تاني.'
+                        ? 'غير مسموح بتغيّر دور حسابك بنفسك. اطلب من مشرف عام آخر.'
                         : null),
 
                 TextInput::make('password')

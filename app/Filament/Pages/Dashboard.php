@@ -38,7 +38,7 @@ class Dashboard extends BaseDashboard
     {
         return $schema->components([
             Section::make('تصفية الأرقام')
-                ->description('الفترة بتتطبق على تاريخ استحقاق القسط المتأخر. سيب الحقول فاضية لعرض الكل.')
+                ->description('يتم تطبيق الفترة على تاريخ استحقاق القسط المتأخر. اترك كل الحقول الفارغة لعرض الكل')
                 ->columns(3)
                 ->columnSpanFull()
                 ->schema([

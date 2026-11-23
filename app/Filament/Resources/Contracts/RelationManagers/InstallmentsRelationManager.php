@@ -49,11 +49,11 @@ class InstallmentsRelationManager extends RelationManager
 
                 DatePicker::make('due_date')
                     ->label('تاريخ السداد المستحق')
-                    ->helperText('سيبه فاضي لو مش معروف. القسط من غير موعد مش بيظهر في المتأخرات.'),
+                    ->helperText('اتركه فارغا اذ لم يكن معروفا. القسط بدون موعد لا يظهر في المتأخرات.'),
 
                 DatePicker::make('permit_date')
                     ->label('تاريخ الأذن')
-                    ->helperText('تاريخ إضافي بيتسجل من ملف «إضافة أقساط»، ومش بيأثر على موعد استحقاق القسط.')
+                    ->helperText('تاريخ إضافي يتم تسجيله من ملف «إضافة أقساط»،  ولا يؤثر على موعد استحقاق القسط.')
                     ->maxDate(today()),
             ]);
     }
@@ -157,14 +157,14 @@ class InstallmentsRelationManager extends RelationManager
                 } catch (ValidationException $e) {
                     Notification::make()
                         ->danger()
-                        ->title('ماتسجلش السداد')
+                        ->title(' لم يتم تسجيل السداد')
                         ->body(collect($e->errors())->flatten()->implode(' '))
                         ->send();
 
                     return;
                 }
 
-                Notification::make()->success()->title('اتسجل السداد')->send();
+                Notification::make()->success()->title('تم تسجيل السداد')->send();
             });
     }
 
@@ -189,7 +189,7 @@ class InstallmentsRelationManager extends RelationManager
                     'note' => $data['note'],
                 ]);
 
-                Notification::make()->success()->title('اتسجلت الملاحظة')->send();
+                Notification::make()->success()->title('تم تسجيل الملاحظة')->send();
             });
     }
 
@@ -218,7 +218,7 @@ class InstallmentsRelationManager extends RelationManager
                     return;
                 }
 
-                Notification::make()->success()->title('اتلغى السداد')->send();
+                Notification::make()->success()->title('تم إلغاء السداد')->send();
             });
     }
 
@@ -226,11 +226,11 @@ class InstallmentsRelationManager extends RelationManager
     private function fillDueDatesAction(): Action
     {
         return Action::make('fill_due_dates')
-            ->label('حساب المواعيد الفاضية من تاريخ المقدم')
+            ->label('حساب المواعيد الفارغة من تاريخ المقدم')
             ->icon('heroicon-o-calendar-days')
             ->color('warning')
             ->requiresConfirmation()
-            ->modalDescription('هيتحسب موعد كل قسط موعده فاضي = تاريخ المقدم + رقم القسط بالسنين. الأقساط اللي ليها موعد مش هتتغير.')
+            ->modalDescription('سوف يتم احتساب موعد كل قسط موعده فارغا = تاريخ المقدم + رقم القسط بالسنين. الأقساط اللي ليها موعد مش هتتغير.')
             ->visible(fn (): bool => $this->getOwnerRecord()->down_payment_date !== null
                 && $this->getOwnerRecord()->installments()->whereNull('due_date')->exists()
                 && (auth()->user()?->can('update', $this->getOwnerRecord()) ?? false))

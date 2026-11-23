@@ -3,8 +3,10 @@
 namespace App\Filament\Resources\UpcomingInstallments\Tables;
 
 use App\Models\Center;
+use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,30 +19,25 @@ class UpcomingInstallmentsTable
             ->columns([
                 TextColumn::make('contract_code')
                     ->label('رقم العقد')
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(),
 
                 TextColumn::make('citizen_name')
                     ->label('اسم المواطن')
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(),
 
                 TextColumn::make('center_name')
-                    ->label('المركز')
-                    ->sortable(),
+                    ->label('المركز'),
 
                 TextColumn::make('payment_plan_name')
                     ->label('نظام السداد')
                     ->toggleable(),
 
                 TextColumn::make('installment_no')
-                    ->label('رقم القسط')
-                    ->sortable(),
+                    ->label('رقم القسط'),
 
                 TextColumn::make('due_date')
                     ->label('تاريخ الاستحقاق')
-                    ->date('Y-m-d')
-                    ->sortable(),
+                    ->date('Y-m-d'),
 
                 TextColumn::make('days_remaining')
                     ->label('الأيام المتبقية')
@@ -55,8 +52,7 @@ class UpcomingInstallmentsTable
                         (int) $state === 0
                             ? 'مستحق اليوم'
                             : 'متبقي ' . $state . ' يوم'
-                    )
-                    ->sortable(),
+                    ),
 
                 TextColumn::make('amount')
                     ->label('قيمة القسط')
@@ -72,10 +68,32 @@ class UpcomingInstallmentsTable
             ->filters([
                 SelectFilter::make('center_id')
                     ->label('المركز')
+                    ->placeholder('كل المراكز')
+                    ->searchable()
                     ->options(fn () => Center::query()
                         ->orderBy('name')
                         ->pluck('name', 'id')
                         ->all()),
+
+                Filter::make('due_date_between')
+                    ->label('تاريخ الاستحقاق (من - إلى)')
+                    ->schema([
+                        DatePicker::make('from')->label('من'),
+                        DatePicker::make('to')->label('إلى'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $from = $data['from'] ?? null;
+                        $to = $data['to'] ?? null;
+
+                        // لو المستخدم اختار التاريخين بالعكس، نظبطهم بدل ما تطلع نتيجة فاضية.
+                        if ($from && $to && $from > $to) {
+                            [$from, $to] = [$to, $from];
+                        }
+
+                        return $query
+                            ->when($from, fn (Builder $q) => $q->whereDate('due_date', '>=', $from))
+                            ->when($to, fn (Builder $q) => $q->whereDate('due_date', '<=', $to));
+                    }),
 
                 SelectFilter::make('days_range')
                     ->label('موعد الاستحقاق')
