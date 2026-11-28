@@ -90,11 +90,19 @@ class ContractForm
                                     ? $record->installments()->where('status', Installment::STATUS_PAID)->count()
                                     : 0;
 
-                                $pendingCount = $plan && ! $plan->is_cash
-                                    ? max(0, $plan->installments_count - $paidCount)
-                                    : 0;
+                                if ($plan?->is_completed) {
+                                    // عدد أقساط «تم سداد كامل» مش ثابت: خلّي المستخدم يضيف/يمسح حسب الحاجة
+                                    $current = $get('installments');
+                                    $set('installments', is_array($current) && $current !== []
+                                        ? $current
+                                        : [['amount' => null]]);
+                                } else {
+                                    $pendingCount = $plan && ! $plan->is_cash
+                                        ? max(0, $plan->installments_count - $paidCount)
+                                        : 0;
 
-                                $set('installments', array_fill(0, $pendingCount, ['amount' => null]));
+                                    $set('installments', array_fill(0, $pendingCount, ['amount' => null]));
+                                }
                                 $refreshTotal($get, $set);
                             }),
 
@@ -150,8 +158,12 @@ class ContractForm
                                     ->afterStateUpdated($refreshTotalFromInstallment),
                             ])
                             ->itemNumbers()
-                            ->addable(false)
-                            ->deletable(false)
+                            ->addable(fn (Get $get): bool => (bool) PaymentPlan::query()
+                                ->whereKey($get('payment_plan_id'))
+                                ->value('is_completed'))
+                            ->deletable(fn (Get $get): bool => (bool) PaymentPlan::query()
+                                ->whereKey($get('payment_plan_id'))
+                                ->value('is_completed'))
                             ->reorderable(false),
                     ]),
 

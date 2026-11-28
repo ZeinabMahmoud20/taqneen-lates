@@ -24,7 +24,7 @@ class UpcomingInstallmentsTest extends TestCase
         $contract = (new ContractService())->create(
             Citizen::create(['name' => 'مواطن']),
             $plan,
-            ['code' => 'UP-1', 'down_payment_amount' => 0, 'total_price' => 400],
+            ['code' => 'UP-1', 'down_payment_amount' => 0, 'total_price' => 300],
             [100, 100, 100],
         );
 

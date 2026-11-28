@@ -186,10 +186,13 @@ class ContractService
             return number_format($this->cents($data['cash_amount'] ?? 0) / 100, 2, '.', '');
         }
 
-        $pendingCount = $plan->installments_count - $paid->count();
+        // نوع «تم سداد كامل» عدد أقساطه مش ثابت: اللي في الصف/النموذج هو المطلوب
+        if (! $plan->is_completed) {
+            $pendingCount = $plan->installments_count - $paid->count();
 
-        if ($pendingCount < 0 || count($rows) !== $pendingCount) {
-            $this->fail('installments', "نوع السداد ({$plan->name}) يتطلب {$plan->installments_count} قسطاً، منها {$paid->count()} مسدد. أدخل ".max(0, $pendingCount)." قسطاً غير مسدد.");
+            if ($pendingCount < 0 || count($rows) !== $pendingCount) {
+                $this->fail('installments', "نوع السداد ({$plan->name}) يتطلب {$plan->installments_count} قسطاً، منها {$paid->count()} مسدد. أدخل ".max(0, $pendingCount)." قسطاً غير مسدد.");
+            }
         }
 
         foreach ($rows as $row) {
@@ -244,13 +247,15 @@ class ContractService
             }
 
             $created = 0;
+            // في نوع «تم سداد كامل» العدد مش ثابت، فالحد الأقصى = الموجود + اللي المستخدم أضافه
+            $maxNo = $plan->is_completed ? $all->count() + count($rows) : $plan->installments_count;
             for ($i = $kept->count(); $i < count($rows); $i++) {
                 $number = 1;
-                while ($number <= $plan->installments_count && in_array($number, $usedNumbers, true)) {
+                while ($number <= $maxNo && in_array($number, $usedNumbers, true)) {
                     $number++;
                 }
 
-                if ($number > $plan->installments_count) {
+                if ($number > $maxNo) {
                     $this->fail('installments', 'عدد الأقساط المطلوب أكبر من عدد الأقساط المتاح في نوع السداد.');
                 }
 
@@ -365,7 +370,11 @@ class ContractService
             return;
         }
 
-        if (count($amounts) !== $plan->installments_count) {
+        if ($plan->is_completed && $amounts === []) {
+            $this->fail('installments', 'العقد «تم سداد كامل ثمن الأرض» لازم فيه قسط واحد على الأقل.');
+        }
+
+        if (! $plan->is_completed && count($amounts) !== $plan->installments_count) {
             $this->fail('installments', "نوع السداد ({$plan->name}) يتطلب {$plan->installments_count} أقساط بالظبط.");
         }
 

@@ -39,6 +39,10 @@ class ArrearsImportTest extends TestCase
         PaymentPlan::create(['name' => 'ثلاث سنوات', 'installments_count' => 3, 'is_cash' => false]);
         PaymentPlan::create(['name' => 'خمس سنوات', 'installments_count' => 5, 'is_cash' => false]);
         PaymentPlan::create(['name' => 'سبع سنوات', 'installments_count' => 7, 'is_cash' => false]);
+        PaymentPlan::create([
+            'name' => 'تم سداد كامل ثمن الأرض', 'installments_count' => 0,
+            'is_cash' => false, 'is_completed' => true,
+        ]);
     }
 
     protected function tearDown(): void
@@ -160,7 +164,7 @@ class ArrearsImportTest extends TestCase
         $this->assertSame('2026-02-26', $payment->paid_at->toDateString());
     }
 
-    public function test_fully_paid_row_infers_the_plan_from_the_installment_count(): void
+    public function test_fully_paid_row_uses_the_completed_payment_plan(): void
     {
         // صف «منتصر» من ملف المستخدم (فيه تاريخ 30/02/2020 غير موجود في التقويم)
         $result = $this->import([[
@@ -177,7 +181,7 @@ class ArrearsImportTest extends TestCase
         $this->assertStringContainsString('2020-02-29', $result->warnings[0]['message']);
 
         $contract = Contract::where('code', '30247')->firstOrFail();
-        $this->assertSame('ثلاث سنوات', $contract->paymentPlan->name);   // من عدد الأقساط
+        $this->assertSame('تم سداد كامل ثمن الأرض', $contract->paymentPlan->name);
         $this->assertSame('383716.00', $contract->total_price);
         $this->assertSame(['paid', 'paid', 'paid'], $contract->installments->pluck('status')->all());
         $this->assertSame(
@@ -212,7 +216,7 @@ class ArrearsImportTest extends TestCase
         $this->assertSame(0, OverdueInstallment::query()->count());                          // مش متأخر
     }
 
-    public function test_installment_count_that_matches_no_plan_is_rejected(): void
+    public function test_fully_paid_row_accepts_any_installment_count(): void
     {
         $result = $this->import([[
             'نوع القسط' => 'تم سداد كامل ثمن الأرض', 'كود' => 'F-2', 'الاسم' => 'اتنين',
@@ -220,8 +224,54 @@ class ArrearsImportTest extends TestCase
             'القسط الاول' => 100, 'سداد 1' => '2020/02/04', 'القسط الثاني' => 100, 'سداد 2' => '2021/02/04',
         ]]);
 
+        $this->assertSame([], $result->errors);
+        $this->assertSame(1, $result->contracts);
+        $this->assertSame(2, $result->paidInstallments);
+
+        $contract = Contract::where('code', 'F-2')->firstOrFail();
+        $this->assertSame('تم سداد كامل ثمن الأرض', $contract->paymentPlan->name);
+        $this->assertSame(['paid', 'paid'], $contract->installments->pluck('status')->all());
+        $this->assertSame(
+            ['2020-02-04', '2021-02-04'],
+            $contract->installments->map(fn ($i) => $i->paid_at->toDateString())->all()
+        );
+    }
+
+    public function test_fully_paid_row_ignores_zero_installment_cells_and_renumbers_the_rest(): void
+    {
+        $result = $this->import([[
+            'نوع القسط' => 'تم سداد كامل ثمن الأرض', 'كود' => 'F-3', 'الاسم' => 'فلاتر',
+            'مبلغ الدفعة المقدمة' => 1000, 'تاريخ المقدم' => '2019/02/04',
+            'القسط الاول' => 100, 'سداد 1' => '2020/02/04',
+            'القسط الثاني' => 0, 'سداد 2' => '2020/03/04',
+            'القسط الثالث' => 200, 'سداد 3' => '2021/02/04',
+        ]]);
+
+        $this->assertSame([], $result->errors);
+        $this->assertSame(1, $result->contracts);
+        $this->assertCount(1, $result->warnings);
+        $this->assertStringContainsString('(2)', $result->warnings[0]['message']);
+
+        $contract = Contract::where('code', 'F-3')->firstOrFail();
+        $this->assertSame(['100.00', '200.00'], $contract->installments->pluck('amount')->all());
+        $this->assertSame(
+            ['2020-02-04', '2021-02-04'],
+            $contract->installments->map(fn ($i) => $i->paid_at->toDateString())->all()
+        );
+    }
+
+    public function test_fully_paid_row_is_rejected_when_the_completed_plan_is_missing(): void
+    {
+        PaymentPlan::query()->where('is_completed', true)->delete();
+
+        $result = $this->import([[
+            'نوع القسط' => 'تم سداد كامل ثمن الأرض', 'كود' => 'F-4', 'الاسم' => 'بدون نوع',
+            'مبلغ الدفعة المقدمة' => 1000, 'تاريخ المقدم' => '2019/02/04',
+            'القسط الاول' => 100, 'سداد 1' => '2020/02/04',
+        ]]);
+
         $this->assertSame(0, $result->contracts);
-        $this->assertStringContainsString('عدد الأقساط (2)', $result->errors[0]['message']);
+        $this->assertStringContainsString('تم سداد كامل ثمن الأرض', $result->errors[0]['message']);
     }
 
     public function test_unpaid_installments_are_due_down_payment_plus_n_years_and_show_in_overdue(): void

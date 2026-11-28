@@ -113,25 +113,46 @@ class ArrearsImporter
                 'cash_paid_at' => $row['down_date']?->format('Y-m-d'),
             ];
         } else {
-            // «تم سداد كامل ثمن الأرض»: نوع السداد بيتحدد من عدد الأقساط المكتوبة
             if ($row['plan_kind'] === 'completed') {
-                $written = $byNo->filter(fn ($i) => $i['amount'] !== null)->count();
-                $plan = PaymentPlan::query()->where('is_cash', false)->where('installments_count', $written)->first();
+                // «تم سداد كامل ثمن الأرض» نوع سداد مستقل، وعدد أقساطه بيتحدد من الصف (مش 3/5/7)
+                $plan = PaymentPlan::query()->where('is_completed', true)->first();
                 if (! $plan) {
-                    $this->fail('installments', "عدد الأقساط ({$written}) مش بيطابق أي نوع سداد (3 أو 5 أو 7 سنوات).");
+                    $this->fail('type', 'نوع السداد «تم سداد كامل ثمن الأرض» غير موجود في النظام (شغّل PaymentPlanSeeder).');
                 }
+
+                // الخلايا الفاضية أو الصفر مش أقساط (المعادلات في الإكسيل بترجّع 0)
+                $written = $byNo->filter(fn ($i): bool => ($i['amount'] ?? null) > 0);
+                $ignored = $byNo->filter(fn ($i): bool => ($i['amount'] === null || $i['amount'] <= 0)
+                    && $i['paid_at'] !== null);
+                if ($ignored->isNotEmpty()) {
+                    $stats['warnings'][] = 'خلايا أقساط فاضية/صفر وتاريخها اتجاهلت: رقم ('
+                        . implode('، ', $ignored->keys()->all()) . ').';
+                }
+                if ($written->isEmpty()) {
+                    $this->fail('installments', 'العقد مكتوب «تم سداد كامل» لكن مفيش أقساط بمبالغ صحيحة.');
+                }
+
+                // ترقيم الأقساط من 1 على حسب المبالغ المكتوبة، حتى لو كان فيه فراغات أو أصفار بينهم
+                $byNo = $written->values()
+                    ->map(fn (array $i, int $index): array => [
+                        'no' => $index + 1,
+                        'amount' => $i['amount'],
+                        'paid_at' => $i['paid_at'],
+                    ])
+                    ->keyBy('no');
+                $count = $byNo->count();
             } else {
                 $plan = PaymentPlan::query()->where('is_cash', false)->where('installments_count', $row['plan_years'])->first();
                 if (! $plan) {
                     $this->fail('type', 'نوع السداد غير موجود في النظام (شغّل PaymentPlanSeeder).');
                 }
-            }
 
-            $count = $plan->installments_count;
+                $count = $plan->installments_count;
 
-            foreach ($byNo as $no => $installment) {
-                if ($no > $count) {
-                    $this->fail('installments', "الصف فيه القسط رقم {$no} لكن نوع السداد ({$plan->name}) فيه {$count} أقساط فقط.");
+                foreach ($byNo as $no => $installment) {
+                    if ($no > $count) {
+                        $this->fail('installments', "الصف فيه القسط رقم {$no} لكن نوع السداد ({$plan->name}) فيه {$count} أقساط فقط.");
+                    }
                 }
             }
 
